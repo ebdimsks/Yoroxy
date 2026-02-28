@@ -40,7 +40,8 @@
 
 ## Live demo
 
-[https://yoroxy.onrender.com/](https://yoroxy.onrender.com/)
+* [https://yoroxy.onrender.com/](https://yoroxy.onrender.com/)
+* [https://yoroxy-production.up.railway.app/](https://yoroxy-production.up.railway.app/)
 
 ---
 
