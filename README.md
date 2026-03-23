@@ -38,13 +38,6 @@
 
 ---
 
-## Live demo
-
-* [https://yoroxy.onrender.com/](https://yoroxy.onrender.com/)
-* [https://yoroxy-production.up.railway.app/](https://yoroxy-production.up.railway.app/)
-
----
-
 ## Bug reports & feedback
 
 For bug reports or suggestions for improvement, please **open an Issue** or contact *Yosshy_123@proton.me*.
