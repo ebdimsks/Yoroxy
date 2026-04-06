@@ -1,31 +1,103 @@
+/* =========================
+   Design Tokens
+========================= */
+
 :root {
-  --bg-1: #f6f9fc;
-  --bg-2: #eef4fb;
-  --primary: #4f9cff;
-  --primary-600: #2d7be6;
-  --glass: rgba(255, 255, 255, 0.78);
-  --muted: #6b7280;
-  --text: #0b1220;
+  color-scheme: light dark;
+
+  /* layout */
   --radius: 14px;
 
-  --shadow-soft: 0 8px 28px rgba(16, 24, 40, 0.06);
-  --shadow-strong: 0 20px 60px rgba(16, 24, 40, 0.08);
-
+  /* motion */
   --ease: cubic-bezier(.2, .9, .3, 1);
   --dur-base: 320ms;
+
+  /* =================
+     Light Theme
+  ================= */
+
+  /* background */
+  --color-bg-base: #f6f9fc;
+  --color-bg-subtle: #eef4fb;
+  --color-bg-elevated: #ffffff;
+
+  /* text */
+  --color-text-primary: #0b1220;
+  --color-text-secondary: #6b7280;
+
+  /* brand */
+  --color-accent: #4f9cff;
+  --color-accent-strong: #2d7be6;
+
+  /* glass */
+  --color-glass-bg: rgba(255, 255, 255, 0.72);
+  --color-glass-border: rgba(255, 255, 255, 0.4);
+
+  /* effects */
+  --shadow-soft: 0 8px 28px rgba(16, 24, 40, 0.06);
+  --shadow-strong: 0 20px 60px rgba(16, 24, 40, 0.08);
 }
+
+/* =========================
+   Dark Theme
+========================= */
 
 @media (prefers-color-scheme: dark) {
   :root {
-    --bg-1: #071026;
-    --bg-2: #07152a;
-    --glass: rgba(9, 12, 16, 0.56);
-    --muted: #9aa3b2;
-    --text: #e6eef8;
-    --shadow-soft: 0 14px 36px rgba(0, 0, 0, 0.6);
-    --shadow-strong: 0 30px 80px rgba(0, 0, 0, 0.6);
+    /* background */
+    --color-bg-base: #071026;
+    --color-bg-subtle: #07152a;
+    --color-bg-elevated: #0b162f;
+
+    /* text */
+    --color-text-primary: #e6eef8;
+    --color-text-secondary: #9aa3b2;
+
+    /* brand */
+    --color-accent: #6aa8ff;
+    --color-accent-strong: #3f8cff;
+
+    /* glass */
+    --color-glass-bg: rgba(12, 16, 24, 0.6);
+    --color-glass-border: rgba(255, 255, 255, 0.06);
+
+    /* effects */
+    --shadow-soft: 0 10px 40px rgba(0, 0, 0, 0.6);
+    --shadow-strong: 0 30px 80px rgba(0, 0, 0, 0.7);
   }
 }
+
+/* =========================
+   Manual Override
+========================= */
+
+:root[data-theme="light"] {
+  color-scheme: light;
+}
+
+:root[data-theme="dark"] {
+  color-scheme: dark;
+
+  --color-bg-base: #071026;
+  --color-bg-subtle: #07152a;
+  --color-bg-elevated: #0b162f;
+
+  --color-text-primary: #e6eef8;
+  --color-text-secondary: #9aa3b2;
+
+  --color-accent: #6aa8ff;
+  --color-accent-strong: #3f8cff;
+
+  --color-glass-bg: rgba(12, 16, 24, 0.6);
+  --color-glass-border: rgba(255, 255, 255, 0.06);
+
+  --shadow-soft: 0 10px 40px rgba(0, 0, 0, 0.6);
+  --shadow-strong: 0 30px 80px rgba(0, 0, 0, 0.7);
+}
+
+/* =========================
+   Reset / Base
+========================= */
 
 * {
   box-sizing: border-box;
@@ -39,12 +111,20 @@ body {
 body {
   margin: 0;
   height: 100dvh;
-  color: var(--text);
-  background: linear-gradient(180deg, var(--bg-1), var(--bg-2));
+  color: var(--color-text-primary);
+  background: linear-gradient(
+    180deg,
+    var(--color-bg-base),
+    var(--color-bg-subtle)
+  );
   display: flex;
   justify-content: center;
   align-items: center;
 }
+
+/* =========================
+   Background Layer
+========================= */
 
 #background {
   position: fixed;
@@ -52,6 +132,10 @@ body {
   z-index: -2;
   pointer-events: none;
 }
+
+/* =========================
+   Layout
+========================= */
 
 .app-root {
   width: 100%;
@@ -75,17 +159,26 @@ body {
   justify-content: center;
 }
 
+/* =========================
+   Card
+========================= */
+
 .card {
   width: 100%;
   max-width: 880px;
-  background: var(--glass);
-  border-radius: calc(var(--radius) + 2px);
   padding: clamp(16px, 3vw, 24px);
+  border-radius: calc(var(--radius) + 2px);
+
+  background: var(--color-glass-bg);
+  border: 1px solid var(--color-glass-border);
+  backdrop-filter: blur(16px) saturate(140%);
+
   box-shadow: var(--shadow-soft);
-  backdrop-filter: blur(12px) saturate(120%);
+
   display: flex;
   flex-direction: column;
   gap: 16px;
+
   transition:
     transform var(--dur-base) var(--ease),
     box-shadow var(--dur-base) var(--ease);
@@ -96,6 +189,10 @@ body {
   box-shadow: var(--shadow-strong);
 }
 
+/* =========================
+   Header
+========================= */
+
 .card-header {
   display: flex;
   align-items: center;
@@ -104,8 +201,12 @@ body {
 .brand {
   font-weight: 600;
   font-size: 1rem;
-  color: var(--primary-600);
+  color: var(--color-accent-strong);
 }
+
+/* =========================
+   Search
+========================= */
 
 .search-area {
   width: 100%;
@@ -116,19 +217,27 @@ body {
   align-items: center;
   gap: 12px;
   width: 100%;
+
   padding: clamp(10px, 2vw, 14px);
   border-radius: 999px;
+
   background: linear-gradient(
     180deg,
-    rgba(255, 255, 255, 0.95),
-    rgba(255, 255, 255, 0.82)
+    color-mix(in srgb, var(--color-bg-elevated) 95%, transparent),
+    color-mix(in srgb, var(--color-bg-elevated) 85%, transparent)
   );
-  border: 1px solid rgba(79, 156, 255, 0.12);
+
+  border: 1px solid
+    color-mix(in srgb, var(--color-accent) 20%, transparent);
 }
 
 .searchbar:focus-within {
-  border-color: var(--primary);
+  border-color: var(--color-accent);
 }
+
+/* =========================
+   Input
+========================= */
 
 .icon {
   flex: 0 0 20px;
@@ -142,14 +251,19 @@ body {
   border: none;
   background: transparent;
   outline: none;
+
   font-size: clamp(15px, 2.5vw, 20px);
-  color: var(--text);
+  color: var(--color-text-primary);
   min-width: 0;
 }
 
 .search-input::placeholder {
-  color: var(--muted);
+  color: var(--color-text-secondary);
 }
+
+/* =========================
+   Responsive
+========================= */
 
 @media (min-width: 768px) {
   .card {
