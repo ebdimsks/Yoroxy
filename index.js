@@ -4,7 +4,6 @@ import { createBareServer } from '@tomphttp/bare-server-node';
 import cors from 'cors';
 import path from 'node:path';
 
-const server = http.createServer();
 const app = express();
 const rootDir = process.cwd();
 const bareServer = createBareServer('/bare/');
@@ -19,15 +18,33 @@ const SEARCH_ENGINES = [
 ];
 
 const FETCH_TIMEOUT_MS = 2000;
-
 let shuttingDown = false;
 
 app.disable('x-powered-by');
 
 app.use(cors());
-app.use(express.json());
-app.use(express.urlencoded({ extended: true }));
+app.use(express.json({ limit: '1mb' }));
+app.use(express.urlencoded({ extended: true, limit: '1mb' }));
 app.use(express.static(path.join(rootDir, 'public')));
+
+function isIgnorableNetworkError(err) {
+  if (!err) return false;
+
+  const code = String(err.code || '');
+  const name = String(err.name || '');
+  const message = String(err.message || '');
+
+  return (
+    code === 'ECONNRESET' ||
+    code === 'EPIPE' ||
+    code === 'ETIMEDOUT' ||
+    code === 'ECONNABORTED' ||
+    code === 'UND_ERR_SOCKET' ||
+    name === 'AbortError' ||
+    message.includes('aborted') ||
+    message.includes('socket hang up')
+  );
+}
 
 app.get('/api/search', async (req, res, next) => {
   try {
@@ -41,6 +58,7 @@ app.get('/api/search', async (req, res, next) => {
 
       const controller = new AbortController();
       const timeoutId = setTimeout(() => controller.abort(), FETCH_TIMEOUT_MS);
+      req.on('close', () => controller.abort());
 
       try {
         const response = await fetch(url, {
@@ -58,7 +76,7 @@ app.get('/api/search', async (req, res, next) => {
           return res.json({ url });
         }
       } catch (err) {
-        if (err?.name !== 'AbortError') {
+        if (!isIgnorableNetworkError(err)) {
           console.warn(`Search engine check failed: ${url}`, err);
         }
       } finally {
@@ -77,12 +95,38 @@ app.use((req, res) => {
 });
 
 app.use((err, _req, res, _next) => {
+  if (isIgnorableNetworkError(err)) {
+    console.warn('Ignored request-level network error:', {
+      code: err?.code,
+      name: err?.name,
+      message: err?.message,
+    });
+
+    if (!res.headersSent) {
+      return res.status(499).json({ error: 'client closed request' });
+    }
+    return;
+  }
+
   console.error('Express error:', err);
+
   if (res.headersSent) return;
   res.status(500).json({ error: 'internal error' });
 });
 
-server.on('request', (req, res) => {
+const server = http.createServer((req, res) => {
+  req.on('error', (err) => {
+    if (!isIgnorableNetworkError(err)) {
+      console.warn('Request stream error:', err);
+    }
+  });
+
+  res.on('error', (err) => {
+    if (!isIgnorableNetworkError(err)) {
+      console.warn('Response stream error:', err);
+    }
+  });
+
   try {
     if (bareServer.shouldRoute(req)) {
       bareServer.routeRequest(req, res);
@@ -90,7 +134,13 @@ server.on('request', (req, res) => {
       app(req, res);
     }
   } catch (err) {
+    if (isIgnorableNetworkError(err)) {
+      console.warn('Ignored routing abort:', err?.message || err);
+      return;
+    }
+
     console.error('Request routing error:', err);
+
     if (!res.headersSent) {
       res.statusCode = 500;
       res.end('Internal Server Error');
@@ -101,6 +151,12 @@ server.on('request', (req, res) => {
 });
 
 server.on('upgrade', (req, socket, head) => {
+  socket.on('error', (err) => {
+    if (!isIgnorableNetworkError(err)) {
+      console.warn('Socket error during upgrade:', err);
+    }
+  });
+
   try {
     if (bareServer.shouldRoute(req)) {
       bareServer.routeUpgrade(req, socket, head);
@@ -108,7 +164,28 @@ server.on('upgrade', (req, socket, head) => {
       socket.destroy();
     }
   } catch (err) {
+    if (isIgnorableNetworkError(err)) {
+      console.warn('Ignored upgrade abort:', err?.message || err);
+      socket.destroy();
+      return;
+    }
+
     console.error('Upgrade routing error:', err);
+    socket.destroy();
+  }
+});
+
+server.on('clientError', (err, socket) => {
+  if (isIgnorableNetworkError(err)) {
+    socket.destroy();
+    return;
+  }
+
+  console.warn('clientError:', err);
+
+  if (socket.writable) {
+    socket.end('HTTP/1.1 400 Bad Request\r\n\r\n');
+  } else {
     socket.destroy();
   }
 });
@@ -118,17 +195,34 @@ server.on('error', (err) => {
 });
 
 process.on('uncaughtException', (err) => {
+  if (isIgnorableNetworkError(err)) {
+    console.warn('Ignored uncaught network error:', {
+      code: err?.code,
+      name: err?.name,
+      message: err?.message,
+    });
+    return;
+  }
+
   console.error('uncaughtException:', err);
   shutdown(1);
 });
 
 process.on('unhandledRejection', (reason) => {
+  if (isIgnorableNetworkError(reason)) {
+    console.warn('Ignored unhandled network rejection:', reason);
+    return;
+  }
+
   console.error('unhandledRejection:', reason);
   shutdown(1);
 });
 
 process.on('SIGINT', () => shutdown(0));
 process.on('SIGTERM', () => shutdown(0));
+
+server.keepAliveTimeout = 65_000;
+server.headersTimeout = 70_000;
 
 server.listen(PORT, () => {
   console.log(`Server Listening on ${PORT}`);
@@ -142,7 +236,7 @@ function shutdown(exitCode = 0) {
 
   const forceExitTimer = setTimeout(() => {
     console.error('Forced exit after shutdown timeout');
-    process.exit(1);
+    process.exit(exitCode || 1);
   }, 5000);
   forceExitTimer.unref();
 
